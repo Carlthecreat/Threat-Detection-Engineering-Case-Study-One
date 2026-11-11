@@ -41,6 +41,7 @@ Executing the script revealed two key details:
 - It did not catch the execution of the base script.
 
 The reason for the first can be attributed to Rule 92057 in /var/ossec/ruleset/rules/0800-sysmon_id_1.xml.
+
 ```xml
 <rule id="92057" level="12">
   <if_group>sysmon_event1</if_group>
@@ -56,4 +57,18 @@ The reason for the first can be attributed to Rule 92057 in /var/ossec/ruleset/r
 
 However, no detection rules exist for PowerShell scripts run by user accounts. To fix this there are two options; setting up the native PowerShell logging on Windows, but this would require extensive tuning to ensure only relevant information is collected, and leveraging the Sysmon configurations that already exist.
 
-The former isn't necessary for a lab of such a small scope, therefore adding a new rule targeting Sysmon Event ID 1 filtered to select only normal user accounts is the way to go.
+The former isn't necessary for a lab of such a small scope, therefore adding a new rule targeting Sysmon Event ID 1 filtered to select only normal user accounts is the way to go. 
+
+To achieve this, I built a rule that searched for users with an SID of 1000 and above, to filter for only standard user accounts and avoid noise from system processes, as well as commands that included a PowerShell script.
+
+```xml
+<rule id="100100" level="10">
+  <field name="win.eventdata.subjectUserSid" type="pcre2">^S-1-5-21-\d{1,10}-\d{1,10}-\d{1,10}-[1-9]\d{3,}$</field>
+  <field name="win.eventdata.commandLine" type="pcre2">^.+\.ps1.*$</field>
+  <options>no_full_log</options>
+  <description>User executed a PowerShell script</description>
+  <mitre>
+    <id>T1204</id>
+  </mitre>
+</rule>
+```
